@@ -26,6 +26,23 @@ RUN case "$TARGETARCH" in \
     esac && \
     rustup target add "$(cat /target.txt)"
 
+# Link with rust-lld instead of `cc`.
+#
+# The build stage runs on the *build* platform, so when the target differs the
+# native `cc` is asked to link foreign objects and fails with
+# "unrecognized command-line option '-m64'". A C cross-toolchain would fix that,
+# but is unnecessary here: the dependency tree is pure Rust (no ring, aws-lc-rs,
+# openssl-sys or rustls — enforced in deny.toml), so rust-lld, which ships with
+# the toolchain, can link the whole thing on its own.
+#
+# The path is derived rather than hardcoded so it survives toolchain and host
+# changes.
+RUN printf '%s/lib/rustlib/%s/bin\n' \
+      "$(rustc --print sysroot)" \
+      "$(rustc -vV | awk '/^host: /{print $2}')" > /lld-path.txt && \
+    test -x "$(cat /lld-path.txt)/rust-lld"
+ENV RUSTFLAGS="-C linker=rust-lld"
+
 WORKDIR /src
 
 # Dependency layer first, so editing our own sources does not rebuild the world.
@@ -35,14 +52,16 @@ COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 RUN mkdir -p src && \
     echo 'fn main() {}' > src/main.rs && \
     echo '' > src/lib.rs && \
-    cargo build --release --locked --target "$(cat /target.txt)" && \
+    PATH="$(cat /lld-path.txt):$PATH" \
+      cargo build --release --locked --target "$(cat /target.txt)" && \
     rm -rf src
 
 COPY src ./src
 # cargo caches by mtime; touching guarantees our real sources are seen as newer
 # than the dummies compiled above.
 RUN touch src/main.rs src/lib.rs && \
-    cargo build --release --locked --target "$(cat /target.txt)" && \
+    PATH="$(cat /lld-path.txt):$PATH" \
+      cargo build --release --locked --target "$(cat /target.txt)" && \
     cp "target/$(cat /target.txt)/release/panoptidns" /panoptidns
 
 # --- runtime -----------------------------------------------------------------

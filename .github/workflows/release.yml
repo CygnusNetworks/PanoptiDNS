@@ -64,11 +64,20 @@ jobs:
 
       # Fully static: the whole point of keeping C crypto out of the tree, and
       # what lets the image be distroless/static rather than distroless/cc.
+      #
+      # The two targets describe themselves differently — x86_64-musl produces
+      # "static-pie linked" and aarch64-musl "statically linked" — so assert on
+      # the absence of dynamic linking, which is the property we actually care
+      # about, rather than on one spelling of it.
       - name: Assert the binary is static
         run: |
           f="target/${{ matrix.target }}/release/panoptidns"
           file "$f"
-          file "$f" | grep -q "statically linked"
+          if file "$f" | grep -q "dynamically linked"; then
+            echo "::error::$f is dynamically linked; distroless/static cannot run it."
+            exit 1
+          fi
+          file "$f" | grep -qE "static-pie linked|statically linked"
 
       - name: Package
         run: |
