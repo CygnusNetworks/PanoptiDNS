@@ -198,8 +198,13 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v5
+      # `pattern` is required: docker/build-push-action also uploads a
+      # `*.dockerbuild` build-record artifact, and downloading everything makes
+      # the merge fail on that special format with "Artifact download failed
+      # after 5 retries".
       - uses: actions/download-artifact@v4
         with:
+          pattern: panoptidns-*
           path: artifacts
           merge-multiple: true
 
