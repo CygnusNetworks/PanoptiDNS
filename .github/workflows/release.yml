@@ -215,13 +215,20 @@ jobs:
             artifacts/*.sha256
           generate_release_notes: true
           body: |
+            PanoptiDNS synthesizes IPv6 reverse (PTR) and matching forward (AAAA)
+            records per query, so no zone file is needed for a /64. It is a Rust
+            reimplementation of [AllKnowingDNS](https://metacpan.org/dist/AllKnowingDNS)
+            v1.7 and reads the same configuration file.
+
             ## Container image
 
             ```sh
-            docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            docker pull ghcr.io/cygnusnetworks/panoptidns:${{ github.ref_name }}
+            docker pull cygnusnetworks/panoptidns:${{ github.ref_name }}
             ```
 
-            Multi-arch (amd64/arm64), ~5 MB, distroless, runs as uid 65532.
+            Multi-arch (amd64/arm64), ~5 MB, distroless, runs as uid 65532, with
+            build provenance attestation.
 
             ## Static binaries
 
@@ -229,4 +236,23 @@ jobs:
             checksums. Each archive also contains the example config, the systemd
             unit and the docs.
 
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
+            ## Security
+
+            Six defects found in AllKnowingDNS v1.7 are structurally absent here
+            rather than patched, each with a named regression test. Most
+            seriously, the original could be terminated by a single
+            unauthenticated UDP packet, because it built resource records by
+            interpolating the query name into a DNS master-file presentation
+            string.
+
+            See [SECURITY.md](https://github.com/${{ github.repository }}/blob/main/SECURITY.md).
+
+            ## Upgrading from AllKnowingDNS
+
+            Run `panoptidns --check-config -c /etc/all-knowing-dns.conf` first.
+            Malformed `network` lines, unknown directives and a missing
+            `%DIGITS%` are now fatal rather than silently ignored. Every
+            behavioural difference is listed in the
+            [migration guide](https://github.com/${{ github.repository }}/blob/main/docs/MIGRATION-from-AllKnowingDNS.md).
+
+            Full changelog: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
