@@ -208,6 +208,14 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # `github.ref_name` is the *git* tag (v0.1.0); metadata-action's
+      # type=semver pattern strips the leading `v`, so the image tag is 0.1.0.
+      # Referencing the git tag in a docker pull command would send people to an
+      # image that does not exist.
+      - name: Derive the image tag
+        id: imgtag
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -223,8 +231,8 @@ jobs:
             ## Container image
 
             ```sh
-            docker pull ghcr.io/cygnusnetworks/panoptidns:${{ github.ref_name }}
-            docker pull cygnusnetworks/panoptidns:${{ github.ref_name }}
+            docker pull ghcr.io/cygnusnetworks/panoptidns:${{ steps.imgtag.outputs.value }}
+            docker pull cygnusnetworks/panoptidns:${{ steps.imgtag.outputs.value }}
             ```
 
             Multi-arch (amd64/arm64), ~5 MB, distroless, runs as uid 65532, with
