@@ -32,10 +32,10 @@ jobs:
       - name: Check credentials are configured
         id: creds
         env:
-          USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           if [ -z "$USERNAME" ]; then
-            echo "::warning::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN are not set; skipping the Docker Hub sync."
+            echo "::warning::DOCKER_USERNAME/DOCKER_TOKEN are not set; skipping the Docker Hub sync."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -45,8 +45,8 @@ jobs:
         if: steps.creds.outputs.ready == 'true'
         uses: peter-evans/dockerhub-description@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
           repository: cygnusnetworks/panoptidns
           readme-filepath: ./DOCKERHUB.md
           short-description: >-
