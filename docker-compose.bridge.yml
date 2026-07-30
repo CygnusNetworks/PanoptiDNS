@@ -1,0 +1,59 @@
+# Bridge-network alternative, for when host networking is not an option.
+#
+# READ THIS CAVEAT. With the default bridge and userland-proxy enabled, Docker
+# rewrites UDP source addresses to the gateway. Consequences:
+#
+#   * Response rate limiting sees one client instead of many, so every rate-limit
+#     bucket collapses into a single shared budget and one abusive source can
+#     throttle all legitimate traffic.
+#   * --querylog records the gateway address for every query, so it cannot be
+#     used to identify who asked what.
+#
+# The `userland-proxy: false` daemon setting (in /etc/docker/daemon.json) plus
+# `ip6tables: true` preserves source addresses in most setups. A macvlan network
+# preserves them properly. Verify with --querylog before trusting either.
+#
+# This file also uses a high port inside the container and publishes 53 to it, so
+# no capability and no sysctl are needed.
+
+services:
+  panoptidns:
+    image: ghcr.io/cygnusnetworks/panoptidns:latest
+    # build: .
+    container_name: panoptidns
+    restart: unless-stopped
+
+    ports:
+      - "53:5353/udp"
+      - "53:5353/tcp"
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    volumes:
+      - ./panoptidns.conf:/etc/panoptidns/panoptidns.conf:ro
+
+    environment:
+      # A v1.7 config copied from a physical host names public addresses that do
+      # not exist inside a container, so binding would fail at startup. This
+      # override replaces the config's `listen` directives entirely.
+      PANOPTIDNS_LISTEN: "0.0.0.0:5353,[::]:5353"
+      PANOPTIDNS_LOG: "info"
+
+    healthcheck:
+      # The default health check queries port 53; ours listens on 5353.
+      test: ["CMD", "/panoptidns", "--healthcheck", "--healthcheck-port", "5353"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

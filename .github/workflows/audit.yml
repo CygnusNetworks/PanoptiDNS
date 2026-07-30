@@ -1,0 +1,68 @@
+name: Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "deny.toml"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "deny.toml"
+  # A new advisory can land against code that has not changed, so this must run
+  # on a timer rather than only on push.
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Split so an advisory failure is distinguishable at a glance from a
+        # licence or a banned-crate failure.
+        checks: [advisories, bans, licenses, sources]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ matrix.checks }}
+
+  unused:
+    name: Unused dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: taiki-e/install-action@cargo-machete
+      - run: cargo machete
+
+  fuzz-smoke:
+    name: Fuzz smoke test
+    runs-on: ubuntu-latest
+    # cargo-fuzz needs nightly; this is a short smoke run, not a fuzzing campaign.
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check for fuzz targets
+        id: check
+        run: test -d fuzz && echo "present=true" >> "$GITHUB_OUTPUT" || echo "present=false" >> "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.present == 'true'
+        run: rustup toolchain install nightly
+      - if: steps.check.outputs.present == 'true'
+        uses: taiki-e/install-action@cargo-fuzz
+      - if: steps.check.outputs.present == 'true'
+        run: |
+          for target in $(cargo +nightly fuzz list); do
+            echo "::group::$target"
+            cargo +nightly fuzz run "$target" -- -max_total_time=60
+            echo "::endgroup::"
+          done

@@ -1,0 +1,12 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# Fuzzing artifacts
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+
+# Reference copy of the Perl original, fetched from CPAN (not our code).
+# Kept locally for porting the acceptance vectors; see docs/MIGRATION-from-AllKnowingDNS.md
+/AllKnowingDNS

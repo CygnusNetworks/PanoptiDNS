@@ -1,0 +1,95 @@
+# PanoptiDNS configuration.
+#
+# The format is the AllKnowingDNS v1.7 format: keywords are case-insensitive and
+# leading indentation is decorative. An unmodified v1.7 config works unchanged,
+# apart from the strictness noted in docs/MIGRATION-from-AllKnowingDNS.md.
+#
+# Validate before restarting:   panoptidns --check-config -c /etc/panoptidns/panoptidns.conf
+
+# ---------------------------------------------------------------------------
+# Global settings. These MUST come before the first `network` line: indentation
+# carries no meaning in this format, so position is the only unambiguous way to
+# tell a global setting from a zone-scoped one.
+# ---------------------------------------------------------------------------
+
+# Addresses to bind, port 53 unless one is given. Repeatable.
+# In a container, prefer the PANOPTIDNS_LISTEN environment variable — it
+# overrides these entirely, which is what you want when the config was copied
+# from a physical host whose addresses do not exist in the container.
+#listen 2001:db8:100e:1::3
+#listen 198.51.100.53
+#listen [::]:5353
+
+# SOA/NS for the zone apexes. Both `primary` and `hostmaster` are needed, or
+# neither. Without them PanoptiDNS still serves, but it cannot put a SOA in the
+# authority section of a negative answer, so resolvers cannot cache negatives and
+# will re-query indefinitely — this is what AllKnowingDNS always did. A startup
+# warning tells you when you are in that state.
+primary     ns1.example.net.
+hostmaster  hostmaster.example.net.
+ns          ns1.example.net.
+ns          ns2.example.net.
+
+# TTL of synthesized records. 3600 matches AllKnowingDNS.
+#ttl 3600
+
+# What to answer for a name outside every configured zone.
+#   refused  (default) — correct for an authoritative server, and smaller than a
+#                        synthesized NXDOMAIN, which matters for amplification.
+#   nxdomain           — what AllKnowingDNS did; available for compatibility.
+#out-of-zone refused
+
+# Largest UDP response we advertise and emit. 1232 avoids IPv6 fragmentation
+# (RFC 9715). Raise only if you know your path MTU.
+#max-udp-payload 1232
+
+# Hard deadline for an upstream lookup. AllKnowingDNS blocked for up to 20
+# seconds per query in a single-threaded server, which made a black-holed
+# upstream a trivial denial of service.
+#upstream-timeout 300
+
+# Response rate limiting, per client prefix (/24 for IPv4, /64 for IPv6). On by
+# default: a server that synthesizes an unbounded number of records is an
+# attractive reflection amplifier. TCP is never limited.
+#rrl responses-per-second 20
+#rrl burst 50
+# Every Nth suppressed response is sent truncated instead of dropped, so a
+# legitimate resolver retries over TCP. 0 = always drop.
+#rrl slip 2
+# Disable entirely (not recommended on a public server):
+#rrl off
+
+# ---------------------------------------------------------------------------
+# Zones. Each `network` starts a new one.
+# ---------------------------------------------------------------------------
+
+# The network must be a proper network address — no bits set below the prefix
+# length — and the prefix length must be a multiple of 4 (one `ip6.arpa` label
+# carries exactly one nibble). AllKnowingDNS required a multiple of 16; that was
+# an implementation artifact, so /36 and /52 now work too.
+network 2001:db8:100e:ccc0::/64
+    # %DIGITS% expands to the host part as lowercase hex, zero-padded to
+    # (128 - prefixlen) / 4 characters. For a /64 that is 16 characters, so
+    # 2001:db8:100e:ccc0:219:dbff:fe43:2ec7 becomes
+    # ipv6-0219dbfffe432ec7.nutzer.example.net.
+    #
+    # Capitalisation here is preserved verbatim, deliberately.
+    resolves to ipv6-%DIGITS%.nutzer.example.net
+
+    # Optional: before synthesizing, ask this server for <query>.upstream, so
+    # individual addresses can be overridden with real hostnames.
+    #
+    # Only PTR records whose owner name is exactly the name we asked for are
+    # accepted; everything else in the response is discarded. AllKnowingDNS
+    # relayed the upstream's entire answer section as authoritative data, which
+    # let a hostile upstream inject arbitrary records.
+    #with upstream 2001:db8:100e:1::2
+
+# A second zone. Several zones may share a parent domain — they are told apart by
+# the literal text around %DIGITS%, matched as a full name, never as a suffix.
+#network 2001:db8:100e:cd10::/64
+#    resolves to ipv6-%DIGITS%.treff.example.net
+
+# Non-/64 works. A /112 leaves 4 hex digits:
+#network 2001:db8:100e:ccc0:1111:2222:3333:0000/112
+#    resolves to host-%DIGITS%.small.example.net

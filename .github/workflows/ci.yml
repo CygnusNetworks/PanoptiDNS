@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail the build on any warning, so the panic-family lint policy that keeps the
+  # request path abort-free is actually enforced rather than merely declared.
+  RUSTFLAGS: -D warnings
+
+jobs:
+  test:
+    name: Test, lint, format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The toolchain is pinned by rust-toolchain.toml, so no version here.
+      - name: Install components
+        run: rustup component add clippy rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test --all-features --no-fail-fast
+
+      # The example config must stay valid, or the first thing a new user copies
+      # is broken.
+      - name: Validate the example config
+        run: |
+          cargo build --release
+          ./target/release/panoptidns --check-config --config panoptidns.conf.example
+
+      # An unmodified AllKnowingDNS v1.7 config must keep working; that is the
+      # entire compatibility promise.
+      - name: Validate an unmodified v1.7 config
+        run: |
+          cat > /tmp/v17.conf <<'EOF'
+          network 2001:4d88:100e:ccc0::/64
+          	resolves to ipv6-%DIGITS%.nutzer.raumzeitlabor.de
+          	with upstream 2001:4d88:100e:1::2
+          EOF
+          ./target/release/panoptidns --check-config --config /tmp/v17.conf
+
+  deny:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  musl:
+    name: Static musl build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup target add ${{ matrix.target }}
+      - uses: taiki-e/install-action@cross
+      - uses: Swatinem/rust-cache@v2
+      # Proves the tree stays free of C dependencies. If this breaks, something
+      # pulled in ring/aws-lc-rs/rustls and the distroless-static image will need
+      # to become distroless-cc.
+      - run: cross build --release --locked --target ${{ matrix.target }}
+
+  docker:
+    name: Container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: panoptidns:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A distroless image has no shell, so this also proves the in-binary health
+      # check and the entrypoint work.
+      - name: Smoke-test the image
+        run: |
+          cp panoptidns.conf.example /tmp/panoptidns.conf
+          docker run -d --name panoptidns-ci \
+            -v /tmp/panoptidns.conf:/etc/panoptidns/panoptidns.conf:ro \
+            -e PANOPTIDNS_LISTEN=0.0.0.0:5353 \
+            -p 5353:5353/udp \
+            panoptidns:ci
+          for i in $(seq 1 30); do
+            docker exec panoptidns-ci /panoptidns --healthcheck --healthcheck-port 5353 && break
+            sleep 1
+          done
+          sudo apt-get update && sudo apt-get install -y dnsutils
+          # The forward direction, then the reverse, then the packet that used to
+          # kill AllKnowingDNS.
+          # 2001:db8:100e:ccc0:219:dbff:fe43:2ec7, the example config's network.
+          answer=$(dig @127.0.0.1 -p 5353 +short PTR \
+            7.c.e.2.3.4.e.f.f.f.b.d.9.1.2.0.0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa)
+          echo "PTR -> $answer"
+          test "$answer" = "ipv6-0219dbfffe432ec7.nutzer.example.net."
+          back=$(dig @127.0.0.1 -p 5353 +short AAAA ipv6-0219dbfffe432ec7.nutzer.example.net)
+          echo "AAAA -> $back"
+          test "$back" = "2001:db8:100e:ccc0:219:dbff:fe43:2ec7"
+          # The packet that terminated AllKnowingDNS. The health check below is
+          # the real assertion: the process must still be answering.
+          dig @127.0.0.1 -p 5353 PTR 'a;b.0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa' >/dev/null 2>&1 || true
+          docker exec panoptidns-ci /panoptidns --healthcheck --healthcheck-port 5353
+          docker logs panoptidns-ci
+          docker rm -f panoptidns-ci

@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Rust dependencies. Grouped so routine patch bumps arrive as one PR rather
+  # than a dozen; the hickory crates must move together, since they share a
+  # workspace version and their APIs are coupled.
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      hickory:
+        patterns:
+          - hickory-*
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

@@ -1,0 +1,47 @@
+# Recommended production deployment: host networking.
+#
+# Why host networking rather than a published port: with Docker's default bridge
+# and userland-proxy, UDP source addresses are rewritten to the gateway. That
+# collapses every rate-limit bucket into one — so a single abusive client would
+# throttle everybody — and makes --querylog useless for diagnosing anything.
+#
+# If you cannot use host networking, see docker-compose.bridge.yml and read the
+# caveat there.
+
+services:
+  panoptidns:
+    image: ghcr.io/cygnusnetworks/panoptidns:latest
+    # Or build locally:
+    # build: .
+    container_name: panoptidns
+    restart: unless-stopped
+    network_mode: host
+
+    # Port 53 without any capability at all: this lowers the unprivileged-port
+    # threshold for the container instead of granting CAP_NET_BIND_SERVICE.
+    # It applies to IPv6 as well, despite the name.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    volumes:
+      - ./panoptidns.conf:/etc/panoptidns/panoptidns.conf:ro
+
+    environment:
+      # Comment out to use the `listen` directives from the config file.
+      PANOPTIDNS_LISTEN: "0.0.0.0:53,[::]:53"
+      PANOPTIDNS_LOG: "info"
+
+    # Nothing is ever written to disk; logs go to stdout.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

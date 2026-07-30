@@ -1,0 +1,7 @@
+/target
+/AllKnowingDNS
+/.git
+/docs
+/packaging
+*.md
+docker-compose*.yml

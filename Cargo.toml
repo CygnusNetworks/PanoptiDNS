@@ -1,0 +1,73 @@
+[package]
+name = "panoptidns"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+description = "Tiny authoritative DNS server that synthesizes IPv6 reverse (PTR) and forward (AAAA) records on the fly"
+license = "BSD-3-Clause"
+repository = "https://github.com/CygnusNetworks/PanoptiDNS"
+readme = "README.md"
+keywords = ["dns", "ipv6", "rdns", "ptr", "slaac"]
+categories = ["network-programming"]
+
+[lib]
+name = "panoptidns"
+path = "src/lib.rs"
+
+[[bin]]
+name = "panoptidns"
+path = "src/main.rs"
+
+[dependencies]
+# `Name`, `Record`, `RData` — we deliberately reuse hickory's DNS name validation
+# rather than reimplementing it. Default features off: the pure core needs no
+# tokio/rustls/DNSSEC. The server milestone adds hickory-server on top.
+hickory-proto = { version = "0.26", default-features = false }
+# No default features anywhere in the hickory stack: we want no DNSSEC, no
+# rustls, no DoH/DoQ. That keeps the dependency tree free of C code, which is
+# what makes the static musl build in the Dockerfile trivial.
+hickory-server = { version = "0.26", default-features = false }
+# `tokio` only: `system-config` would read /etc/resolv.conf, which is irrelevant
+# here — the upstream address comes from our own config file.
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio"] }
+thiserror = "2"
+# hickory 0.26's RequestHandler is still an `#[async_trait]` trait.
+async-trait = "0.1"
+
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "net",
+    "signal",
+    "time",
+    "sync",
+    "macros",
+] }
+# Lock-free config sharing: every request does one atomic load, and SIGHUP swaps
+# in a freshly validated config without stopping the world.
+arc-swap = "1"
+clap = { version = "4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+# Needed for IPV6_V6ONLY, so binding both 0.0.0.0:53 and [::]:53 does not clash.
+socket2 = "0.6"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# Response rate limiting, and the upstream negative cache.
+governor = "0.10"
+moka = { version = "0.12", features = ["future"] }
+
+[dev-dependencies]
+proptest = "1"
+pretty_assertions = "1"
+# Only for the differential test that pins our strict ip6.arpa parser against
+# hickory's own `Name::parse_arpa_name`, which returns an `ipnet::IpNet`.
+ipnet = "2.3"
+
+[profile.release]
+# MUST stay "unwind". The request path relies on catch_unwind to turn a panic
+# into SERVFAIL instead of killing the daemon — which is exactly how the Perl
+# original could be terminated by a single UDP packet. panic="abort" would
+# reintroduce that class of remote DoS.
+panic = "unwind"
+lto = "thin"
+codegen-units = 1
+strip = true
