@@ -160,6 +160,28 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+      # The push above is what creates the Docker Hub repository, so this is the
+      # first moment the description can be set. Doing it here means a fresh
+      # repository is never left with an empty description.
+      - name: Sync Docker Hub description
+        if: steps.dockerhub.outputs.ready == 'true'
+        run: |
+          python3 .github/scripts/absolutise_links.py \
+            "${{ github.repository }}" README.md DOCKERHUB.md
+
+      - name: Push description
+        if: steps.dockerhub.outputs.ready == 'true'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+          repository: cygnusnetworks/panoptidns
+          readme-filepath: ./DOCKERHUB.md
+          # Docker Hub truncates this at 100 bytes.
+          short-description: >-
+            Authoritative IPv6 rDNS: synthesizes PTR and AAAA records on the fly,
+            no zone file for a /64
+
   release:
     name: Publish release
     needs: [binaries, image]

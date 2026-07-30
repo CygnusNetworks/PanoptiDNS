@@ -12,6 +12,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DOCKERHUB_REPO: cygnusnetworks/panoptidns
+
 jobs:
   sync:
     name: Push README to Docker Hub
@@ -27,28 +30,41 @@ jobs:
             "${{ github.repository }}" README.md DOCKERHUB.md
           head -20 DOCKERHUB.md
 
-      # Without this the job fails confusingly on a fresh fork or before the
-      # secrets are added; a skipped sync with a warning is the honest outcome.
-      - name: Check credentials are configured
-        id: creds
+      # Two preconditions, both of which otherwise fail as a bare "Not Found":
+      #   * the secrets must exist (absent on forks, and before they are added);
+      #   * the Docker Hub repository must already exist — Docker Hub creates a
+      #     repository on the first image push, and PATCHing the description of
+      #     one that does not exist returns 404. So the first release has to run
+      #     before this can do anything, which is why release.yml syncs the
+      #     description itself right after pushing the image.
+      - name: Check preconditions
+        id: pre
         env:
           USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           if [ -z "$USERNAME" ]; then
             echo "::warning::DOCKER_USERNAME/DOCKER_TOKEN are not set; skipping the Docker Hub sync."
             echo "ready=false" >> "$GITHUB_OUTPUT"
-          else
+            exit 0
+          fi
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://hub.docker.com/v2/repositories/${DOCKERHUB_REPO}/")
+          if [ "$code" = "200" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::${DOCKERHUB_REPO} does not exist yet (HTTP ${code}). Docker Hub creates a repository on the first image push, so run the Release workflow first; it syncs the description itself."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Sync
-        if: steps.creds.outputs.ready == 'true'
+        if: steps.pre.outputs.ready == 'true'
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-          repository: cygnusnetworks/panoptidns
+          repository: ${{ env.DOCKERHUB_REPO }}
           readme-filepath: ./DOCKERHUB.md
+          # Docker Hub truncates this at 100 bytes.
           short-description: >-
-            Authoritative DNS server that synthesizes IPv6 reverse (PTR) and
-            forward (AAAA) records on the fly — no zone file for a /64.
+            Authoritative IPv6 rDNS: synthesizes PTR and AAAA records on the fly,
+            no zone file for a /64
