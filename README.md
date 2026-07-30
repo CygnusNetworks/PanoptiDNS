@@ -43,9 +43,19 @@ docker compose up -d
 The image is published to both registries, multi-arch (amd64/arm64):
 
 ```sh
-docker pull ghcr.io/cygnusnetworks/panoptidns:latest      # GitHub Container Registry
-docker pull cygnusnetworks/panoptidns:latest              # Docker Hub
+docker pull ghcr.io/cygnusnetworks/panoptidns:stable      # GitHub Container Registry
+docker pull cygnusnetworks/panoptidns:stable              # Docker Hub
 ```
+
+| Tag | Points at |
+|---|---|
+| `stable`, `latest` | The newest released version. Never a prerelease. |
+| `0.1` | The newest patch release in that minor series. |
+| `0.1.0` | Exactly that version — pin this in production. |
+| `edge` | A manual build from `main`. Not a release. |
+
+Prereleases (`0.2.0-rc1`) publish under their exact version only, so they never
+move `stable`, `latest` or the minor tag.
 
 Or without Docker:
 

@@ -18,7 +18,7 @@
 
 services:
   panoptidns:
-    image: ghcr.io/cygnusnetworks/panoptidns:latest
+    image: ghcr.io/cygnusnetworks/panoptidns:stable
     # build: .
     container_name: panoptidns
     restart: unless-stopped
