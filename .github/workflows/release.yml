@@ -104,10 +104,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Docker Hub is optional: without the secrets the image still ships to
+      # GHCR rather than the whole release turning red.
+      - name: Check Docker Hub credentials
+        id: dockerhub
+        env:
+          USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          if [ -n "$USERNAME" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set; publishing to GHCR only."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.dockerhub.outputs.ready == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Both registries get the same tags. metadata-action lowercases the
+          # image path, which GHCR requires and Docker Hub expects.
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ steps.dockerhub.outputs.ready == 'true' && 'docker.io/cygnusnetworks/panoptidns' || '' }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

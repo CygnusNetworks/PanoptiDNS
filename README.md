@@ -6,6 +6,7 @@
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.97%2B-orange.svg?logo=rust)](rust-toolchain.toml)
 [![Container](https://img.shields.io/badge/ghcr.io-panoptidns-2496ED.svg?logo=docker&logoColor=white)](https://github.com/CygnusNetworks/PanoptiDNS/pkgs/container/panoptidns)
+[![Docker Hub](https://img.shields.io/docker/pulls/cygnusnetworks/panoptidns?logo=docker&logoColor=white&label=docker%20hub)](https://hub.docker.com/r/cygnusnetworks/panoptidns)
 [![Image size](https://img.shields.io/badge/image-~5%20MB%20distroless-success.svg)](Dockerfile)
 [![Security policy](https://img.shields.io/badge/security-policy-informational.svg)](SECURITY.md)
 
@@ -37,6 +38,13 @@ than patched. See [docs/MIGRATION-from-AllKnowingDNS.md](docs/MIGRATION-from-All
 cp panoptidns.conf.example panoptidns.conf
 $EDITOR panoptidns.conf
 docker compose up -d
+```
+
+The image is published to both registries, multi-arch (amd64/arm64):
+
+```sh
+docker pull ghcr.io/cygnusnetworks/panoptidns:latest      # GitHub Container Registry
+docker pull cygnusnetworks/panoptidns:latest              # Docker Hub
 ```
 
 Or without Docker:

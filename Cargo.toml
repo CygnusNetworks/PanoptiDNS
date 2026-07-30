@@ -30,7 +30,6 @@ hickory-server = { version = "0.26", default-features = false }
 # `tokio` only: `system-config` would read /etc/resolv.conf, which is irrelevant
 # here — the upstream address comes from our own config file.
 hickory-resolver = { version = "0.26", default-features = false, features = ["tokio"] }
-thiserror = "2"
 # hickory 0.26's RequestHandler is still an `#[async_trait]` trait.
 async-trait = "0.1"
 
@@ -51,9 +50,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 # Needed for IPV6_V6ONLY, so binding both 0.0.0.0:53 and [::]:53 does not clash.
 socket2 = "0.6"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
-# Response rate limiting, and the upstream negative cache.
+# Response rate limiting. Upstream caching is handled by hickory-resolver's own
+# response cache (see `ResolverOpts::cache_size` in src/upstream.rs), so no
+# separate cache crate is needed.
 governor = "0.10"
-moka = { version = "0.12", features = ["future"] }
 
 [dev-dependencies]
 proptest = "1"

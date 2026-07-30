@@ -96,7 +96,7 @@ jobs:
             -e PANOPTIDNS_LISTEN=0.0.0.0:5353 \
             -p 5353:5353/udp \
             panoptidns:ci
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             docker exec panoptidns-ci /panoptidns --healthcheck --healthcheck-port 5353 && break
             sleep 1
           done

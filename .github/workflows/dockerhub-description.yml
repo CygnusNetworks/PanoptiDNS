@@ -1,0 +1,54 @@
+name: Sync Docker Hub description
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/scripts/absolutise_links.py
+      - .github/workflows/dockerhub-description.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Push README to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Docker Hub renders the description standalone, so relative links in the
+      # README (LICENSE, docs/…, Dockerfile, badge targets) would 404 there.
+      - name: Absolutise relative links
+        run: |
+          python3 .github/scripts/absolutise_links.py \
+            "${{ github.repository }}" README.md DOCKERHUB.md
+          head -20 DOCKERHUB.md
+
+      # Without this the job fails confusingly on a fresh fork or before the
+      # secrets are added; a skipped sync with a warning is the honest outcome.
+      - name: Check credentials are configured
+        id: creds
+        env:
+          USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          if [ -z "$USERNAME" ]; then
+            echo "::warning::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN are not set; skipping the Docker Hub sync."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync
+        if: steps.creds.outputs.ready == 'true'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: cygnusnetworks/panoptidns
+          readme-filepath: ./DOCKERHUB.md
+          short-description: >-
+            Authoritative DNS server that synthesizes IPv6 reverse (PTR) and
+            forward (AAAA) records on the fly — no zone file for a /64.
