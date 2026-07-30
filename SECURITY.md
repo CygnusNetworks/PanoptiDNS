@@ -6,14 +6,23 @@ that makes the process stop answering is a vulnerability.**
 
 ## Reporting a vulnerability
 
-Please report privately via
-[GitHub Security Advisories](https://github.com/CygnusNetworks/PanoptiDNS/security/advisories/new),
-through the GitHub Security Advisories link above.
+Report privately through
+[GitHub Security Advisories](https://github.com/CygnusNetworks/PanoptiDNS/security/advisories/new)
+— the **"Report a vulnerability"** button on the repository's *Security* tab. This
+is our only intake channel. It keeps the report encrypted inside GitHub and lets
+us collaborate on a fix and a coordinated disclosure in the same place. We
+deliberately do not publish a mailbox for this, so there is no address to scrape
+and nothing to miss in a spam folder.
+
+No GitHub account and unable to create one? Open a public issue whose entire body
+is the single line `Requesting a private security contact` — with **no technical
+details** — and a maintainer will open an advisory and invite you to it. Never put
+the vulnerability itself in a public issue.
 
 Please include the configuration, the query or packet that triggers it, and what
 you observed. A packet capture or a `dig` command line is ideal.
 
-Do not open a public issue for a vulnerability until a fix is available.
+Do not disclose a vulnerability publicly until a fix is available.
 
 We aim to acknowledge within 5 working days.
 
