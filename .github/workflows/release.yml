@@ -74,7 +74,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/panoptidns" dist/
-          cp README.md LICENSE CHANGELOG.md SECURITY.md panoptidns.conf.example dist/
+          cp README.md LICENSE NOTICE CHANGELOG.md SECURITY.md panoptidns.conf.example dist/
           cp -r docs dist/
           cp packaging/panoptidns.service dist/
           tar -C dist -czf "${{ matrix.name }}.tar.gz" .

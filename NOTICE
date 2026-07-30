@@ -1,0 +1,19 @@
+PanoptiDNS
+Copyright (c) 2026 Cygnus Networks GmbH
+
+This product is an independent reimplementation of AllKnowingDNS:
+
+    AllKnowingDNS
+    Copyright (c) 2012 Michael Stapelberg <michael@stapelberg.de>
+    Released under the BSD license.
+    https://metacpan.org/dist/AllKnowingDNS
+
+PanoptiDNS shares AllKnowingDNS's configuration file format, and its test suite
+ports the acceptance vectors from AllKnowingDNS's test files in order to preserve
+behavioural compatibility.
+
+No AllKnowingDNS source code is included in, or derived into, this work. The
+implementation was written from scratch in Rust against the observable behaviour
+documented by those test vectors.
+
+See docs/MIGRATION-from-AllKnowingDNS.md for the behavioural differences.

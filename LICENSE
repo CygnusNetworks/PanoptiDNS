@@ -3,13 +3,6 @@ BSD 3-Clause License
 Copyright (c) 2026, Cygnus Networks GmbH
 All rights reserved.
 
-PanoptiDNS is an independent reimplementation of AllKnowingDNS, which is
-Copyright (c) 2012 Michael Stapelberg <michael@stapelberg.de> and released under
-the BSD license. PanoptiDNS shares AllKnowingDNS's configuration file format, and
-its test suite ports the acceptance vectors from AllKnowingDNS's test files in
-order to preserve behavioural compatibility. No AllKnowingDNS source code is
-included in or derived into this work.
-
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
