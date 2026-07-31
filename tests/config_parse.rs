@@ -262,6 +262,51 @@ fn placeholder_is_case_insensitive() {
 }
 
 #[test]
+fn dashed_placeholder_parses_and_flags_the_label() {
+    let cfg = parse_ok("network 2001:db8::/64\n\tresolves to h-%DIGITS-DASHED%.example.net\n");
+    let FwdLabel::Digits { dashed, .. } = &cfg.zones[0].fwd.labels[cfg.zones[0].fwd.digits_at]
+    else {
+        panic!("expected a Digits label");
+    };
+    assert!(*dashed);
+}
+
+#[test]
+fn dashed_placeholder_is_case_insensitive() {
+    let cfg = parse_ok("network 2001:db8::/64\n\tresolves to h-%digits-dashed%.example.net\n");
+    let FwdLabel::Digits { dashed, .. } = &cfg.zones[0].fwd.labels[cfg.zones[0].fwd.digits_at]
+    else {
+        panic!("expected a Digits label");
+    };
+    assert!(*dashed);
+}
+
+/// %DIGITS-DASHED% and %DIGITS% together count as the placeholder appearing
+/// twice, same as %DIGITS% used twice.
+#[test]
+fn dashed_and_plain_placeholder_together_is_repeated() {
+    assert_eq!(
+        parse_err("network 2001:db8::/64\n\tresolves to a-%DIGITS%-%DIGITS-DASHED%.example.net\n"),
+        [ConfigErrorKind::PlaceholderRepeated { count: 2 }]
+    );
+}
+
+/// A /60 network leaves 17 host nibbles, not a multiple of 4, so grouping in
+/// 4s cannot be inverted when matching a forward query.
+#[test]
+fn dashed_placeholder_requires_nibble_count_multiple_of_4() {
+    assert_eq!(
+        parse_err("network 2001:db8::/60\n\tresolves to h-%DIGITS-DASHED%.example.net\n"),
+        [ConfigErrorKind::DashedDigitsNotNibbleMultipleOfFour { host_nibbles: 17 }]
+    );
+    // /64 leaves 16 host nibbles — a multiple of 4 — so it is accepted.
+    assert!(
+        parse_ok("network 2001:db8::/64\n\tresolves to h-%DIGITS-DASHED%.example.net\n")
+            .has_zones()
+    );
+}
+
+#[test]
 fn zone_without_resolves_to_is_fatal() {
     assert_eq!(
         parse_err("network 2001:db8::/64\n"),

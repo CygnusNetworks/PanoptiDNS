@@ -24,6 +24,12 @@ use crate::nibble::{mask_bits, netmask_to_ptr_name, ADDR_NIBBLES};
 /// substitutions carried the `/i` flag, so `%digits%` worked there too).
 const PLACEHOLDER: &str = "%digits%";
 
+/// Like `%DIGITS%`, but hex digits are grouped in 4s and dash-separated, e.g.
+/// `8e89-6f21-cc77-0ca0-c324` instead of `8e896f21cc770ca0c324`. Only valid on
+/// a zone whose `host_nibbles` is a multiple of 4, since otherwise the last
+/// group's width would be ambiguous to invert when matching a forward query.
+const PLACEHOLDER_DASHED: &str = "%digits-dashed%";
+
 pub(crate) fn compile(raw: RawConfig, errors: &mut Vec<ConfigError>) -> Config {
     let listen = raw
         .listen
@@ -430,8 +436,9 @@ fn compile_template(
     // `to_ascii_lowercase` is byte-for-byte length preserving, so offsets found
     // in the lowered copy are valid in the original.
     let lowered = v.value.to_ascii_lowercase();
-    let hits: Vec<usize> = lowered.match_indices(PLACEHOLDER).map(|(i, _)| i).collect();
-    match hits.len() {
+    let hits = lowered.match_indices(PLACEHOLDER).count()
+        + lowered.match_indices(PLACEHOLDER_DASHED).count();
+    match hits {
         1 => {}
         0 => {
             errors.push(v.error(ConfigErrorKind::PlaceholderMissing));
@@ -448,6 +455,7 @@ fn compile_template(
 
     let mut labels: Vec<FwdLabel> = Vec::new();
     let mut digits_at: Option<usize> = None;
+    let mut dashed_used = false;
 
     for (idx, segment) in template.split('.').enumerate() {
         if segment.is_empty() {
@@ -457,8 +465,20 @@ fn compile_template(
             return None;
         }
         let seg_lower = segment.to_ascii_lowercase();
-        match seg_lower.find(PLACEHOLDER) {
-            Some(at) => {
+        // `%DIGITS-DASHED%` is checked first: it is not a substring of
+        // `%DIGITS%` (the latter is closed by `%` right after `digits`), so the
+        // order does not matter for correctness, but checking the more specific
+        // one first reads more naturally.
+        let hit = seg_lower
+            .find(PLACEHOLDER_DASHED)
+            .map(|at| (at, PLACEHOLDER_DASHED, true))
+            .or_else(|| {
+                seg_lower
+                    .find(PLACEHOLDER)
+                    .map(|at| (at, PLACEHOLDER, false))
+            });
+        match hit {
+            Some((at, placeholder, dashed)) => {
                 let (pre, rest) = match segment.split_at_checked(at) {
                     Some(parts) => parts,
                     None => {
@@ -468,7 +488,7 @@ fn compile_template(
                         return None;
                     }
                 };
-                let post = match rest.split_at_checked(PLACEHOLDER.len()) {
+                let post = match rest.split_at_checked(placeholder.len()) {
                     Some((_, post)) => post,
                     None => {
                         errors.push(v.error(ConfigErrorKind::ResolvesToInvalidName {
@@ -478,11 +498,13 @@ fn compile_template(
                     }
                 };
                 digits_at = Some(idx);
+                dashed_used = dashed;
                 labels.push(FwdLabel::Digits {
                     pre: pre.as_bytes().to_vec(),
                     pre_lower: pre.to_ascii_lowercase().into_bytes(),
                     post: post.as_bytes().to_vec(),
                     post_lower: post.to_ascii_lowercase().into_bytes(),
+                    dashed,
                 });
             }
             None => labels.push(FwdLabel::Literal {
@@ -501,6 +523,11 @@ fn compile_template(
         }));
         return None;
     };
+
+    if dashed_used && !host_nibbles.is_multiple_of(4) {
+        errors.push(v.error(ConfigErrorKind::DashedDigitsNotNibbleMultipleOfFour { host_nibbles }));
+        return None;
+    }
 
     let template = FwdTemplate { labels, digits_at };
 

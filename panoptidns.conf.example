@@ -76,6 +76,13 @@ network 2001:db8:100e:ccc0::/64
     # Capitalisation here is preserved verbatim, deliberately.
     resolves to ipv6-%DIGITS%.nutzer.example.net
 
+    # %DIGITS-DASHED% is the same host part, but grouped in 4s and separated by
+    # `-`, e.g. ipv6-0219-dbff-fe43-2ec7.nutzer.example.net. Only usable when
+    # the host part is a multiple of 4 hex digits wide, i.e. the prefix length
+    # is a multiple of 16 (as /64 is here) — otherwise the last group's width
+    # would be ambiguous to invert when matching a forward query.
+    #resolves to ipv6-%DIGITS-DASHED%.nutzer.example.net
+
     # Optional: before synthesizing, ask this server for <query>.upstream, so
     # individual addresses can be overridden with real hostnames.
     #

@@ -185,6 +185,60 @@ pub fn digits_to_host(digits: &[u8], host_nibbles: u8) -> Option<u128> {
     Some(host)
 }
 
+/// Insert `-` every 4 hex digits: `"8e896f21cc770ca0c324"` becomes
+/// `"8e89-6f21-cc77-0ca0-c324"`.
+///
+/// `digits` must already be a multiple of 4 characters long, which
+/// `%DIGITS-DASHED%` enforces at config-compile time by rejecting zones whose
+/// `host_nibbles` is not a multiple of 4 — otherwise the grouping would be
+/// ambiguous to invert. A length that is not a multiple of 4 still renders
+/// (the last group is simply shorter), it just cannot come back through
+/// [`undash_group`].
+#[must_use]
+pub fn dash_group(digits: &str) -> String {
+    let bytes = digits.as_bytes();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 4);
+    for (i, chunk) in bytes.chunks(4).enumerate() {
+        if i > 0 {
+            out.push('-');
+        }
+        // `digits` is always ASCII hex, produced by `host_digits` or the
+        // config-compile-time widest-case probe, so this is always valid UTF-8.
+        out.push_str(std::str::from_utf8(chunk).unwrap_or_default());
+    }
+    out
+}
+
+/// Inverse of [`dash_group`]: strip a `-` that must appear after every 4th hex
+/// digit, and nowhere else.
+///
+/// Strict on purpose. A lax matcher here — tolerating a missing dash, a dash in
+/// the wrong place, or extra dashes — would resurrect the original's
+/// split-brain bug, where zone lookup and answer synthesis silently disagreed
+/// on which names were valid. Returns `None` unless `input` is exactly
+/// `host_nibbles` hex digits grouped in 4s and dash-separated.
+#[must_use]
+pub fn undash_group(mut input: &[u8], host_nibbles: u8) -> Option<Vec<u8>> {
+    let groups = usize::from(host_nibbles) / 4;
+    if groups == 0 {
+        return None;
+    }
+    let mut out = Vec::with_capacity(usize::from(host_nibbles));
+    for g in 0..groups {
+        let (chunk, rest) = input.split_at_checked(4)?;
+        out.extend_from_slice(chunk);
+        input = rest;
+        if g + 1 < groups {
+            let (dash, rest) = input.split_at_checked(1)?;
+            if dash != b"-" {
+                return None;
+            }
+            input = rest;
+        }
+    }
+    input.is_empty().then_some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -496,6 +550,54 @@ mod tests {
             let decoded = digits_to_host(digits.as_bytes(), host_nibbles).unwrap();
             proptest::prop_assert_eq!(prefix | decoded, addr);
             proptest::prop_assert_eq!(addr & mask_bits(mask), prefix);
+        }
+    }
+
+    // ---- dashed digit grouping ---------------------------------------------
+
+    #[test]
+    fn dash_group_inserts_every_4_digits() {
+        assert_eq!(dash_group(""), "");
+        assert_eq!(dash_group("aaff"), "aaff");
+        assert_eq!(
+            dash_group("8e896f21cc770ca0c324"),
+            "8e89-6f21-cc77-0ca0-c324"
+        );
+    }
+
+    #[test]
+    fn undash_group_roundtrips() {
+        assert_eq!(undash_group(b"aaff", 4), Some(b"aaff".to_vec()));
+        assert_eq!(
+            undash_group(b"8e89-6f21-cc77-0ca0-c324", 20),
+            Some(b"8e896f21cc770ca0c324".to_vec())
+        );
+    }
+
+    #[test]
+    fn undash_group_rejects_malformed_input() {
+        assert_eq!(undash_group(b"aaffbbcc", 8), None, "missing dash");
+        assert_eq!(undash_group(b"aaf-fbbcc", 8), None, "dash in wrong place");
+        assert_eq!(undash_group(b"aaff-bbcc-", 8), None, "trailing dash");
+        assert_eq!(undash_group(b"-aaffbbcc", 8), None, "leading dash");
+        assert_eq!(undash_group(b"aaff--bbcc", 8), None, "doubled dash");
+        assert_eq!(undash_group(b"aaff-bbc", 8), None, "short last group");
+        assert_eq!(undash_group(b"", 0), None, "zero host_nibbles never dashes");
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn dash_group_roundtrip_is_identity(
+            raw in proptest::prelude::any::<u128>(),
+            groups in 1u8..=8,
+        ) {
+            let host_nibbles = groups * 4;
+            let digits = host_digits(raw, host_nibbles).unwrap();
+            let dashed = dash_group(&digits);
+            proptest::prop_assert_eq!(
+                undash_group(dashed.as_bytes(), host_nibbles),
+                Some(digits.into_bytes())
+            );
         }
     }
 

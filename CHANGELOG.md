@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-31
+
+### Added
+
+- `%DIGITS-DASHED%` placeholder for `resolves to`: the same host-part hex digits
+  as `%DIGITS%`, but grouped in 4s and separated by `-` (e.g.
+  `0219-dbff-fe43-2ec7`). Only usable when the prefix length is a multiple of
+  16, so the grouping stays unambiguous to invert.
+
 ## [0.1.0] - 2026-07-30
 
 First release. A Rust reimplementation of
@@ -52,5 +61,6 @@ uppercase hex in queries is accepted, and malformed `network` lines, unknown
 directives and `resolves to` without exactly one `%DIGITS%` are now fatal.
 Full list in the migration guide.
 
-[Unreleased]: https://github.com/CygnusNetworks/PanoptiDNS/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/CygnusNetworks/PanoptiDNS/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/CygnusNetworks/PanoptiDNS/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/CygnusNetworks/PanoptiDNS/releases/tag/v0.1.0

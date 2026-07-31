@@ -344,6 +344,41 @@ fn overlapping_networks_use_longest_prefix() {
     );
 }
 
+/// `%DIGITS-DASHED%` groups the host part in 4s and dash-separates it, both when
+/// synthesizing the forward name and when matching a query back to an address.
+#[test]
+fn dashed_digits_render_grouped_and_round_trip() {
+    let config = cfg("network 2001:4d88:100e:ccc0::/64\n\
+                      \tresolves to host-%DIGITS-DASHED%.example.net\n");
+    let zone = &config.zones[0];
+    let addr = u128::from(
+        "2001:4d88:100e:ccc0:219:dbff:fe43:2ec7"
+            .parse::<std::net::Ipv6Addr>()
+            .unwrap(),
+    );
+
+    let fwd = panoptidns::zone::synth::forward_name(zone, addr).expect("renders");
+    assert_eq!(fwd.to_ascii(), "host-0219-dbff-fe43-2ec7.example.net.");
+
+    let (matched_zone, matched_addr) =
+        lookup::match_forward(&config, &fwd).expect("dashed name must match back");
+    assert_eq!(matched_zone.prefix, zone.prefix);
+    assert_eq!(matched_addr, addr);
+
+    // Wrong dash placement, a missing dash, and extra dashes must all be
+    // rejected rather than tolerated.
+    for bad in [
+        "host-0219dbfffe432ec7.example.net.",
+        "host-02-19dbff-fe43-2ec7.example.net.",
+        "host-0219-dbff-fe43-2ec7-.example.net.",
+    ] {
+        assert!(
+            lookup::match_forward(&config, &name(bad)).is_none(),
+            "must reject {bad}"
+        );
+    }
+}
+
 /// The full round trip, for every zone in a realistic config: an address becomes
 /// a name and the name becomes the same address again.
 #[test]

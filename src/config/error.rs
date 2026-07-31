@@ -94,6 +94,12 @@ pub enum ConfigErrorKind {
     PlaceholderRepeated {
         count: usize,
     },
+    /// `%DIGITS-DASHED%` groups hex digits in 4s; a `host_nibbles` that is not a
+    /// multiple of 4 would leave the last group's width ambiguous to invert
+    /// when matching a forward query.
+    DashedDigitsNotNibbleMultipleOfFour {
+        host_nibbles: u8,
+    },
     /// The template cannot produce a valid DNS name even before digits are
     /// substituted (empty label, illegal byte, …).
     ResolvesToInvalidName {
@@ -164,10 +170,17 @@ impl ConfigErrorKind {
             Self::DuplicateNetwork { first_line } => {
                 format!("network is already configured on line {first_line}")
             }
-            Self::PlaceholderMissing => "`resolves to` must contain %DIGITS%".into(),
-            Self::PlaceholderRepeated { count } => {
-                format!("`resolves to` contains %DIGITS% {count} times, expected exactly once")
+            Self::PlaceholderMissing => {
+                "`resolves to` must contain %DIGITS% or %DIGITS-DASHED%".into()
             }
+            Self::PlaceholderRepeated { count } => format!(
+                "`resolves to` contains %DIGITS%/%DIGITS-DASHED% {count} times, expected exactly \
+                 once"
+            ),
+            Self::DashedDigitsNotNibbleMultipleOfFour { host_nibbles } => format!(
+                "%DIGITS-DASHED% needs a host part that is a multiple of 4 hex digits wide, but \
+                 this network's is {host_nibbles}"
+            ),
             Self::ResolvesToInvalidName { reason } => {
                 format!("`resolves to` is not a valid DNS name: {reason}")
             }
@@ -197,6 +210,9 @@ impl ConfigErrorKind {
                 Some(format!("did you mean `{suggestion}`?"))
             }
             Self::PlaceholderMissing => Some("e.g. `resolves to ipv6-%DIGITS%.example.net`".into()),
+            Self::DashedDigitsNotNibbleMultipleOfFour { .. } => {
+                Some("prefix length must leave a multiple of 4 hex digits, e.g. /48, /96".into())
+            }
             Self::InvalidListenAddress => {
                 Some("e.g. `listen 2001:db8::1`, `listen 0.0.0.0`, `listen [::]:5353`".into())
             }

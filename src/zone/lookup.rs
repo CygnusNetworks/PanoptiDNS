@@ -14,7 +14,7 @@
 use hickory_proto::rr::domain::Name;
 
 use crate::config::{Config, FwdLabel, Zone};
-use crate::nibble::{digits_to_host, mask_bits, ptr_name_to_addr};
+use crate::nibble::{digits_to_host, mask_bits, ptr_name_to_addr, undash_group};
 
 /// Case-insensitively strip `prefix`, which must already be lowercase.
 #[inline]
@@ -77,12 +77,18 @@ pub fn match_zone_forward(zone: &Zone, qname: &Name) -> Option<u128> {
             FwdLabel::Digits {
                 pre_lower,
                 post_lower,
+                dashed,
                 ..
             } => {
                 let rest = strip_prefix_ci(label, pre_lower)?;
                 let middle = strip_suffix_ci(rest, post_lower)?;
                 // Length and hex-ness are both checked here, once.
-                host = Some(digits_to_host(middle, zone.host_nibbles)?);
+                host = Some(if *dashed {
+                    let undashed = undash_group(middle, zone.host_nibbles)?;
+                    digits_to_host(&undashed, zone.host_nibbles)?
+                } else {
+                    digits_to_host(middle, zone.host_nibbles)?
+                });
             }
         }
     }

@@ -41,12 +41,16 @@ pub enum FwdLabel {
         verbatim: Vec<u8>,
         lower: Vec<u8>,
     },
-    /// The label that carries `%DIGITS%`, split around the placeholder.
+    /// The label that carries `%DIGITS%` or `%DIGITS-DASHED%`, split around the
+    /// placeholder.
     Digits {
         pre: Vec<u8>,
         pre_lower: Vec<u8>,
         post: Vec<u8>,
         post_lower: Vec<u8>,
+        /// Whether the placeholder was `%DIGITS-DASHED%`: group hex digits in
+        /// 4s, separated by `-`, instead of one contiguous run.
+        dashed: bool,
     },
 }
 
@@ -103,10 +107,16 @@ impl FwdTemplate {
         for label in &self.labels {
             match label {
                 FwdLabel::Literal { verbatim, .. } => labels.push(verbatim.clone()),
-                FwdLabel::Digits { pre, post, .. } => {
+                FwdLabel::Digits {
+                    pre, post, dashed, ..
+                } => {
                     let mut joined = Vec::with_capacity(pre.len() + digits.len() + post.len());
                     joined.extend_from_slice(pre);
-                    joined.extend_from_slice(digits.as_bytes());
+                    if *dashed {
+                        joined.extend_from_slice(crate::nibble::dash_group(digits).as_bytes());
+                    } else {
+                        joined.extend_from_slice(digits.as_bytes());
+                    }
                     joined.extend_from_slice(post);
                     labels.push(joined);
                 }

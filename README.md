@@ -81,7 +81,10 @@ network 2001:db8:100e:ccc0::/64
 ```
 
 `%DIGITS%` expands to the host part as lowercase hex, zero-padded to
-`(128 - prefixlen) / 4` characters. Everything else is in
+`(128 - prefixlen) / 4` characters. `%DIGITS-DASHED%` is the same digits grouped
+in 4s and separated by `-` (e.g. `0219-dbff-fe43-2ec7`), usable only when the
+prefix length is a multiple of 16 — otherwise the last group's width would be
+ambiguous to invert when matching a forward query. Everything else is in
 [panoptidns.conf.example](panoptidns.conf.example), which documents every
 directive and its default.
 
