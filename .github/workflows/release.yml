@@ -27,7 +27,7 @@ jobs:
     name: Verify before release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: rustup component add clippy rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
@@ -55,7 +55,7 @@ jobs:
           - target: aarch64-unknown-linux-musl
             name: panoptidns-aarch64-linux-musl
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: rustup target add ${{ matrix.target }}
       - uses: taiki-e/install-action@cross
       - uses: Swatinem/rust-cache@v2
@@ -89,7 +89,7 @@ jobs:
           tar -C dist -czf "${{ matrix.name }}.tar.gz" .
           sha256sum "${{ matrix.name }}.tar.gz" > "${{ matrix.name }}.tar.gz.sha256"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: |
@@ -103,11 +103,11 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -128,13 +128,13 @@ jobs:
           fi
 
       - if: steps.dockerhub.outputs.ready == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # Both registries get the same tags. metadata-action lowercases the
           # image path, which GHCR requires and Docker Hub expects.
@@ -162,7 +162,7 @@ jobs:
             org.opencontainers.image.description=Authoritative DNS server that synthesizes IPv6 reverse (PTR) and forward (AAAA) records on the fly
 
       - id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -175,7 +175,7 @@ jobs:
           sbom: true
 
       # Lets consumers verify the image really came from this workflow.
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -192,7 +192,7 @@ jobs:
 
       - name: Push description
         if: steps.dockerhub.outputs.ready == 'true'
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
@@ -209,12 +209,12 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # `pattern` is required: docker/build-push-action also uploads a
       # `*.dockerbuild` build-record artifact, and downloading everything makes
       # the merge fail on that special format with "Artifact download failed
       # after 5 retries".
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: panoptidns-*
           path: artifacts
@@ -228,7 +228,7 @@ jobs:
         id: imgtag
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             artifacts/*.tar.gz

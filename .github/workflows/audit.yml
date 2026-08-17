@@ -33,7 +33,7 @@ jobs:
         # licence or a banned-crate failure.
         checks: [advisories, bans, licenses, sources]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check ${{ matrix.checks }}
@@ -42,7 +42,7 @@ jobs:
     name: Unused dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: taiki-e/install-action@cargo-machete
       - run: cargo machete
 
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     # cargo-fuzz needs nightly; this is a short smoke run, not a fuzzing campaign.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Check for fuzz targets
         id: check
         run: test -d fuzz && echo "present=true" >> "$GITHUB_OUTPUT" || echo "present=false" >> "$GITHUB_OUTPUT"
