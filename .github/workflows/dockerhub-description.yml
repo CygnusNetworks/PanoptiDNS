@@ -20,7 +20,7 @@ jobs:
     name: Push README to Docker Hub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Docker Hub renders the description standalone, so relative links in the
       # README (LICENSE, docs/…, Dockerfile, badge targets) would 404 there.
@@ -58,7 +58,7 @@ jobs:
 
       - name: Sync
         if: steps.pre.outputs.ready == 'true'
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
