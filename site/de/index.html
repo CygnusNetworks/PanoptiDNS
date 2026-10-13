@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="PanoptiDNS — kleiner autoritativer DNS-Server, der IPv6-Reverse-Einträge (PTR) und passende Forward-Einträge (AAAA) pro Anfrage berechnet. Keine Zonendatei für ein /64. Rust, BSD-3-Clause, Ersatz für AllKnowingDNS."
+    />
+    <meta name="theme-color" content="#0b0f0e" />
+    <link rel="canonical" href="https://cygnusnetworks.github.io/PanoptiDNS/de/" />
+    <link rel="alternate" hreflang="en" href="https://cygnusnetworks.github.io/PanoptiDNS/" />
+    <link rel="alternate" hreflang="de" href="https://cygnusnetworks.github.io/PanoptiDNS/de/" />
+    <link rel="alternate" hreflang="x-default" href="https://cygnusnetworks.github.io/PanoptiDNS/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:site_name" content="PanoptiDNS" />
+    <meta property="og:title" content="PanoptiDNS — IPv6-Reverse-DNS ohne Zonendateien" />
+    <meta
+      property="og:description"
+      content="Berechnet PTR- und AAAA-Einträge für ganze IPv6-Netze pro Anfrage. Gehärteter Rust-Ersatz für AllKnowingDNS, ~5-MB-Distroless-Image."
+    />
+    <meta property="og:url" content="https://cygnusnetworks.github.io/PanoptiDNS/de/" />
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+    <link rel="stylesheet" href="../styles.css" />
+    <title>PanoptiDNS — IPv6-Reverse-DNS ohne Zonendateien</title>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="./">
+          <img src="../assets/logo.svg" alt="" width="28" height="28" />
+          PanoptiDNS
+        </a>
+        <ul class="nav-links">
+          <li><a href="#features">Funktionen</a></li>
+          <li><a href="#try">Ausprobieren</a></li>
+          <li class="nav-anchor"><a href="#security">Sicherheit</a></li>
+          <li><a href="#start">Loslegen</a></li>
+          <li class="nav-keep">
+            <span class="lang" aria-label="Sprache">
+              <a href="../" hreflang="en" lang="en">EN</a><span aria-current="true">DE</span>
+            </span>
+          </li>
+          <li class="nav-keep"><a class="btn btn-primary" href="https://github.com/CygnusNetworks/PanoptiDNS">GitHub</a></li>
+        </ul>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <div class="eyebrow">Rust · BSD-3-Clause · ~5&nbsp;MB Image</div>
+            <h1>IPv6-Reverse-DNS. <em>Ohne Zonendateien.</em></h1>
+            <p class="lede">
+              PanoptiDNS ist ein kleiner autoritativer DNS-Server, der PTR-Einträge und die
+              passenden AAAA-Einträge pro Anfrage berechnet — für jede Adresse Ihrer Präfixe,
+              in beide Richtungen. Ein gehärteter Ersatz für AllKnowingDNS, der dieselbe
+              Konfigurationsdatei liest.
+            </p>
+            <div class="btn-row">
+              <a class="btn btn-primary" href="#start">Loslegen</a>
+              <a class="btn btn-ghost" href="https://github.com/CygnusNetworks/PanoptiDNS">Auf GitHub ansehen</a>
+              <a class="btn btn-ghost" href="#try">Abbildung ausprobieren</a>
+            </div>
+          </div>
+          <div class="term" role="img" aria-label="Terminal: dig-Abfragen nach einem PTR- und dem passenden AAAA-Eintrag, beide von PanoptiDNS beantwortet">
+            <div class="term-bar" aria-hidden="true">
+              <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+              <span class="term-title">dig @ipv6-rdns.example.net</span>
+            </div>
+<pre aria-hidden="true"><span class="c-prompt">$ </span><span class="c-cmd">dig +short PTR \
+    7.c.e.2.3.4.e.f.f.f.b.d.9.1.2.0.\
+    0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa</span>
+<span class="c-out">ipv6-0219dbfffe432ec7.nutzer.example.net.</span>
+
+<span class="c-prompt">$ </span><span class="c-cmd">dig +short AAAA \
+    ipv6-0219dbfffe432ec7.nutzer.example.net</span>
+<span class="c-out">2001:db8:100e:ccc0:219:dbff:fe43:2ec7</span>
+
+<span class="c-prompt">$ </span><span class="c-cmd">dig PTR 'a;b.0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa'</span>
+<span class="c-dim">;; status: </span><span class="c-err">NXDOMAIN</span><span class="c-dim">  — und der Server läuft weiter</span></pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <p class="bignum">18&#8239;446&#8239;744&#8239;073&#8239;709&#8239;551&#8239;616</p>
+          <p class="bignum-cap">
+            Adressen in einem einzigen /64. Keine Zonendatei kann sie aufzählen — aber die
+            Zuordnung zwischen Adresse und Hostname ist eine reine Funktion, also berechnet
+            PanoptiDNS sie einfach bei jeder Anfrage. SLAAC-Clients, Privacy-Adressen und
+            ganze Kundenpräfixe bekommen konsistentes Reverse- und Forward-DNS ohne
+            jede Provisionierung.
+          </p>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Klein, streng und im Betrieb langweilig</h2>
+            <p>Ein statisches Binary, eine Konfigurationsdatei, keine Datenbank, keine Zonentransfers.</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature">
+              <div class="icon">⇄</div>
+              <h3>Beide Richtungen</h3>
+              <p>
+                PTR für die Adresse, AAAA für den erzeugten Namen — immer konsistent, weil
+                beides aus derselben Funktion der 128-Bit-Adresse entsteht.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">≡</div>
+              <h3>AllKnowingDNS-Konfiguration, unverändert</h3>
+              <p>
+                Liest das Format von AllKnowingDNS v1.7 wie es ist; dessen Akzeptanztests sind
+                Teil der Testsuite. Vorlagen mit <code>%DIGITS%</code> und <code>%DIGITS-DASHED%</code>.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">✓</div>
+              <h3>Konfigurationsprüfung mit Zeilennummern</h3>
+              <p>
+                <code>--check-config</code> meldet alle Fehler auf einmal, im rustc-Stil mit
+                Markierung. SIGHUP lädt neu; eine fehlerhafte Datei lässt die laufende
+                Konfiguration stehen.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">⛨</div>
+              <h3>Durch keine Anfrage abzuschießen</h3>
+              <p>
+                Anfragenamen werden in ein <code>u128</code> geparst oder abgelehnt — nie als
+                Text weiterverwendet. Panics im Anfragepfad sind per Lint verboten und
+                werden als SERVFAIL abgefangen.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">⏱</div>
+              <h3>Response Rate Limiting</h3>
+              <p>
+                Standardmäßig aktiv, mit getrennten Budgets für Antworten und negative
+                Antworten, Aggregation pro Präfix und <code>slip</code> wie bei BIND.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">↗</div>
+              <h3>Gehärteter Upstream</h3>
+              <p>
+                <code>with upstream</code>-Abfragen laufen asynchron mit festem Timeout, hinter
+                einem Circuit Breaker und mit strikter Allowlist für weitergereichte Einträge.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">§</div>
+              <h3>Sauberes DNS-Verhalten</h3>
+              <p>
+                SOA und NS am Zonen-Apex, SOA in negativen Antworten (RFC&nbsp;2308), EDNS(0),
+                TCP und BADVERS für unbekannte EDNS-Versionen.
+              </p>
+            </article>
+            <article class="feature">
+              <div class="icon">▣</div>
+              <h3>Winziger, abgeschotteter Container</h3>
+              <p>
+                ~5-MB-Distroless-Image für amd64/arm64, uid 65532, schreibgeschütztes
+                Dateisystem, alle Capabilities entzogen. systemd-Unit mit
+                <code>DynamicUser</code> liegt bei.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="try">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Abbildung ausprobieren</h2>
+            <p>
+              Geben Sie eine beliebige Adresse ein. Das läuft im Browser nach derselben Regel
+              wie im Server: Der Host-Anteil wird zu den Hex-Ziffern im Namen.
+            </p>
+          </div>
+          <div
+            class="mapper"
+            id="mapper"
+            data-msg-invalid="Keine gültige IPv6-Adresse."
+            data-msg-prefix="Das Netz muss ein IPv6-Präfix mit Nibble-Grenze sein (/4 … /124)."
+            data-msg-outside="NXDOMAIN — die Adresse liegt außerhalb des konfigurierten Netzes."
+            data-msg-dashed="%DIGITS-DASHED% braucht eine Präfixlänge, die ein Vielfaches von 16 ist."
+          >
+            <div class="mapper-form">
+              <div>
+                <label for="m-addr">Adresse</label>
+                <input id="m-addr" name="addr" value="2001:db8:100e:ccc0:219:dbff:fe43:2ec7" spellcheck="false" autocomplete="off" />
+              </div>
+              <div>
+                <label for="m-net">network</label>
+                <input id="m-net" name="net" value="2001:db8:100e:ccc0::/64" spellcheck="false" autocomplete="off" />
+              </div>
+              <div>
+                <label for="m-tpl">resolves to</label>
+                <select id="m-tpl" name="tpl">
+                  <option>ipv6-%DIGITS%.nutzer.example.net</option>
+                  <option>host-%DIGITS-DASHED%.ipv6.example.net</option>
+                  <option>%DIGITS%.dyn.example.org</option>
+                </select>
+              </div>
+            </div>
+            <div class="mapper-out" aria-live="polite">
+              <div class="mapper-row"><span class="k">PTR-Anfrage</span><span class="v" data-out="ptr"></span></div>
+              <div class="mapper-row"><span class="k">PTR-Antwort</span><span class="v" data-out="name"></span></div>
+              <div class="mapper-row"><span class="k">AAAA des Namens</span><span class="v" data-out="aaaa"></span></div>
+            </div>
+            <p class="mapper-note">
+              Hervorgehoben ist der Host-Anteil — 16 Hex-Ziffern bei einem /64. Gespeichert wird
+              nichts; der Server rechnet bei jeder Anfrage genau so.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="security">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Der Fehler, mit dem alles anfing</h2>
+            <p>Warum eine Neuimplementierung statt eines Patches.</p>
+          </div>
+          <div class="story">
+            <div>
+              <p>
+                AllKnowingDNS v1.7 (Perl, seit 2013 nicht mehr gepflegt) ließ sich mit
+                <strong>einem einzigen UDP-Paket beenden</strong>. Es baute Einträge, indem es
+                den vom Angreifer kontrollierten Anfragenamen in einen Text im
+                Master-File-Format einsetzte — und dort werden <code>;</code> und
+                <code>"</code> nicht maskiert. Ein rohes <code>;</code> in einem Label brachte
+                den Parser zum Absturz, niemand fing die Exception, der Prozess endete.
+              </p>
+              <p>
+                In PanoptiDNS ist diese Fehlerklasse <strong>gar nicht darstellbar</strong>:
+                Namen sind nie Text, eine Zone ist ein ganzzahliges Präfix mit Maske, und der
+                Anfragepfad kann nicht abbrechen. Fünf weitere Mängel des Originals — darunter
+                eine bis zu 20&nbsp;s blockierende Upstream-Abfrage — haben je einen eigenen
+                Regressionstest.
+              </p>
+              <p>
+                <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/SECURITY.md">Sicherheitsrichtlinie</a> ·
+                <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/docs/MIGRATION-from-AllKnowingDNS.md">Umstieg von AllKnowingDNS</a> (englisch)
+              </p>
+            </div>
+            <div class="term">
+              <div class="term-bar" aria-hidden="true">
+                <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+                <span class="term-title">AllKnowingDNS v1.7 — der Übeltäter</span>
+              </div>
+<pre><span class="c-dim"># Anfragename des Angreifers → Master-File-Text</span>
+Net::DNS::RR-&gt;new("$qname $ttl $qclass $qtype $rdata")
+
+<span class="c-dim"># ein Paket, ohne Login, beliebig wiederholbar</span>
+<span class="c-prompt">$ </span>dig PTR 'a;b.0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa'
+<span class="c-err">→ AllKnowingDNS: Prozess beendet</span>
+<span class="c-out">→ PanoptiDNS:    NXDOMAIN, läuft weiter</span></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="start">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Loslegen</h2>
+            <p>
+              Konfiguration schreiben, Container starten, Zonen delegieren. Multi-Arch-Images
+              auf GHCR und Docker Hub; im Produktivbetrieb eine feste Version wie
+              <code>0.2.0</code> pinnen.
+            </p>
+          </div>
+          <div class="split">
+            <div class="quickstart">
+              <h3>1 · Konfigurieren und starten</h3>
+              <pre><code>primary     ns1.example.net.
+hostmaster  hostmaster.example.net.
+ns          ns1.example.net.
+
+network 2001:db8:100e:ccc0::/64
+    resolves to ipv6-%DIGITS%.nutzer.example.net</code></pre>
+              <p>Als <code>panoptidns.conf</code> neben der <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/docker-compose.yml">Compose-Datei</a> speichern, dann prüfen und starten:</p>
+              <pre><code>docker compose run --rm panoptidns --check-config
+docker compose up -d</code></pre>
+            </div>
+            <div class="quickstart">
+              <h3>2 · Delegieren</h3>
+              <pre><code>; reverse
+0.c.c.c.e.0.0.1.8.b.d.0.1.0.0.2.ip6.arpa. IN NS ipv6-rdns.example.net.
+
+; forward
+nutzer.example.net. IN NS ipv6-rdns.example.net.</code></pre>
+              <p>Images:</p>
+              <pre><code>ghcr.io/cygnusnetworks/panoptidns:stable
+cygnusnetworks/panoptidns:stable</code></pre>
+            </div>
+          </div>
+          <div class="chips" aria-label="Technik">
+            <span class="chip">Rust · hickory-dns</span>
+            <span class="chip">statisch (musl) · distroless</span>
+            <span class="chip">amd64 / arm64</span>
+            <span class="chip">105 Tests · Property-Tests</span>
+            <span class="chip">systemd-Unit</span>
+            <span class="chip">BSD-3-Clause</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="wrap">
+          <h2>AllKnowingDNS noch heute ersetzen</h2>
+          <p>Dieselbe Konfigurationsdatei, dieselben Antworten — ohne den Fern-Ausschalter.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://github.com/CygnusNetworks/PanoptiDNS">Auf GitHub ansehen</a>
+            <a class="btn btn-ghost" href="https://github.com/CygnusNetworks/PanoptiDNS/releases">Releases</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <strong>PanoptiDNS</strong> · Copyright © 2026
+            <a href="https://www.cygnusnetworks.de/">Cygnus Networks GmbH</a>
+          </div>
+          <div class="footer-links">
+            <a href="https://github.com/CygnusNetworks/PanoptiDNS">GitHub</a>
+            <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/LICENSE">Lizenz</a>
+            <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/CHANGELOG.md">Changelog</a>
+            <a href="https://github.com/CygnusNetworks/PanoptiDNS/blob/main/SECURITY.md">Sicherheit</a>
+            <a href="../" hreflang="en" lang="en">English</a>
+          </div>
+        </div>
+        <p class="legal">
+          PanoptiDNS ist eine unabhängige Neuimplementierung von
+          <a href="https://metacpan.org/dist/AllKnowingDNS">AllKnowingDNS</a> (Copyright 2012
+          Michael Stapelberg, BSD-Lizenz). Es teilt das Konfigurationsformat von
+          AllKnowingDNS und übernimmt dessen Akzeptanztests; Quellcode von AllKnowingDNS ist
+          nicht enthalten. Beispieladressen stammen aus dem Dokumentationspräfix 2001:db8::/32.
+        </p>
+      </div>
+    </footer>
+    <script src="../mapper.js"></script>
+  </body>
+</html>
